@@ -1,0 +1,4 @@
+interface:
+  display_name: "MCGS MCP 编辑"
+  short_description: "解析和编辑 MCGS Access 工程副本，验证控件、变量绑定及事件脚本"
+  default_prompt: "使用 $mcgs-mcp-editor 解析并编辑 MCP 实验副本，验证控件绑定和事件脚本。"

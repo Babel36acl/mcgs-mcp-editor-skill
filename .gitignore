@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+.venv/
+*.MCP
+*.mcp
+*.ldb
+*.laccdb
+*.exe
+*.dll
+*.bin
+*.lib
+*.png
+*.jpg
+local-validation/

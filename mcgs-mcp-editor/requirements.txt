@@ -1,0 +1,4 @@
+access-parser==0.0.6
+pefile==2024.8.26
+unicorn==2.1.4
+pyodbc==5.3.0; sys_platform == 'win32'
