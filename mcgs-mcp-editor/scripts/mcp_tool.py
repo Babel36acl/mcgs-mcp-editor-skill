@@ -4,6 +4,7 @@ import copy
 import json
 from pathlib import Path
 from control_patch import digest, patch_payload
+from kind_registry import check_patchable
 from mfc_archive import scan_unicode_strings, ArchiveError
 from wnduser_records import parse_window, pack_record
 
@@ -32,6 +33,25 @@ def inspect(path):
                 scope='Top-level record framing; string scans are discovery, not nested serializers')
 
 
+def plan_window(table, spec):
+    """Validate a new-window request against the WndUser table.
+
+    Returns (new_id, blob). The blob is the template window's blob copied
+    verbatim; control names inside are therefore duplicated and the host
+    must verify the new window. Window names stay unique.
+    """
+    template = spec.get('template_window_id')
+    name = spec.get('new_name', '')
+    if template not in table['iID']:
+        raise ValueError('Template window %r does not exist' % (template,))
+    if not name or name in table['strName']:
+        raise ValueError('New window name is empty or already present')
+    new_id = max(table['iID']) + 1
+    blob = table['lbObjects'][table['iID'].index(template)]
+    parse_window(blob)
+    return new_id, blob
+
+
 def patch(source, output, profile, driver):
     if output.exists():
         raise ValueError('Output exists; refusing overwrite')
@@ -47,18 +67,27 @@ def patch(source, output, profile, driver):
     if source.read_bytes() != raw:
         raise ValueError('Source changed while reading')
     expected = copy.deepcopy(before)
-    windows = expected['WndUser']; row = windows['iID'].index(profile['window_id'])
-    blob = windows['lbObjects'][row]; parsed = parse_window(blob)
-    originals = parsed['records']
+    windows = expected['WndUser']
+    controls = profile.get('controls', [])
+    new_specs = profile.get('new_windows', [])
+    if not controls and not new_specs:
+        raise ValueError('Profile has neither controls nor new_windows')
+    if controls:
+        row = windows['iID'].index(profile['window_id'])
+        blob = windows['lbObjects'][row]; parsed = parse_window(blob)
+        originals = parsed['records']
+    else:
+        row = None; parsed = None; originals = []
     records = [(r['kind'],r['payload']) for r in originals]
     replaced = set()
-    for action in profile['controls']:
+    for action in controls:
         index = action['record_index']
         if type(index) is not int or not 0<=index<len(originals):
             raise ValueError('Record index out of bounds')
         record = originals[index]
-        if record['kind'] != int(str(action['kind']),0) or record['kind'] not in (0x5008,0x5025,0x5027):
-            raise ValueError('Expected a profiled label, numeric input or standard button')
+        if record['kind'] != int(str(action['kind']), 0):
+            raise ValueError('Profile kind does not match record')
+        check_patchable(record['kind'], action.get('edits', []))
         updated = patch_payload(record['payload'],action)
         if action['action'] == 'replace':
             if index in replaced:
@@ -79,17 +108,34 @@ def patch(source, output, profile, driver):
         else:
             raise ValueError('Only replace and same-window clone are supported')
     import struct
-    rebuilt = blob[:parsed['count_offset']]+struct.pack('<I',len(records))+b''.join(pack_record(kind,p) for kind,p in records)+parsed['trailer']
-    check = parse_window(rebuilt)
-    if check['trailer'] != parsed['trailer']:
-        raise ValueError('Window trailer changed')
-    windows['lbObjects'][row] = rebuilt
+    if controls:
+        rebuilt = blob[:parsed['count_offset']]+struct.pack('<I',len(records))+b''.join(pack_record(kind,p) for kind,p in records)+parsed['trailer']
+        check = parse_window(rebuilt)
+        if check['trailer'] != parsed['trailer']:
+            raise ValueError('Window trailer changed')
+        windows['lbObjects'][row] = rebuilt
+    new_rows = []
+    for spec in new_specs:
+        new_id, new_blob = plan_window(windows, spec)
+        tpl = windows['iID'].index(spec['template_window_id'])
+        new_rows.append((new_id, windows['iDeleteFlag'][tpl], windows['iCompileFlag'][tpl],
+                         spec['new_name'], spec.get('note', ''), new_blob))
+        windows['iID'].append(new_id)
+        windows['iDeleteFlag'].append(windows['iDeleteFlag'][tpl])
+        windows['iCompileFlag'].append(windows['iCompileFlag'][tpl])
+        windows['strName'].append(spec['new_name'])
+        windows['strNote'].append(spec.get('note', ''))
+        windows['lbObjects'].append(new_blob)
     with output.open('xb') as stream:
         stream.write(raw)
     import pyodbc
     connection = pyodbc.connect(f'DRIVER={{{driver}}};DBQ={dbq};',autocommit=False)
     try:
-        connection.cursor().execute('UPDATE WndUser SET lbObjects=? WHERE iID=?',pyodbc.Binary(rebuilt),profile['window_id'])
+        if controls:
+            connection.cursor().execute('UPDATE WndUser SET lbObjects=? WHERE iID=?',pyodbc.Binary(rebuilt),profile['window_id'])
+        for new_id, delflag, compflag, name, note, new_blob in new_rows:
+            connection.cursor().execute('INSERT INTO WndUser (iID,iDeleteFlag,iCompileFlag,strName,strNote,lbObjects) VALUES (?,?,?,?,?,?)',
+                                        new_id, delflag, compflag, name, note, pyodbc.Binary(new_blob))
         connection.commit()
     except Exception:
         connection.rollback()
@@ -118,7 +164,7 @@ def main():
         result = inspect(args.mcp)
     else:
         profile = json.loads(args.profile.read_text(encoding='utf-8-sig'))
-        for control in profile['controls']:
+        for control in profile.get('controls', []):
             for edit in control['edits']:
                 if edit['type'] == 'event':
                     edit['program'] = json.loads((args.profile.parent/edit['program_file']).read_text(encoding='utf-8-sig'))
