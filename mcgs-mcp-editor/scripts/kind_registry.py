@@ -4,7 +4,9 @@ Evidence: Ghidra 12.1.4 ctor decompilations of McgsSetPro.exe
 (a8e1ce78535ea3db0ca5fdb54306df7f9b56f298ca1025f2e20e337347fd6f54);
 each class ctor pushes its kind constant then installs its vftable.
 Field islands per kind come from equal-length multi-record alignment
-of real MCPs (see scratch group_align reports).
+of real MCPs (see analysis/rea-exe-20261016/group-*.json and
+assembly-mini-20261016/group-newkinds-*.json: 10/11 new kinds mapped,
+0x5039 CDrawCell still singleton-only).
 
 Policy (fail-closed):
 - string: all registered kinds, but variable-length text changes are only
@@ -43,10 +45,13 @@ KIND_CLASSES = {
 }
 
 # int32 (left, top, right, bottom) @ payload+24, verified by alignment.
-RECT_WIDGETS = {0x5008, 0x5025, 0x5027, 0x5028, 0x503D}
+# 0x503C verified 2026-10-16 (G-sample 498B x5 real pixel rect + name@78).
+RECT_WIDGETS = {0x5008, 0x5025, 0x5027, 0x5028, 0x503C, 0x503D}
 
 # u16 geometry words @ payload+12..24, int32 rect does NOT apply here.
-SHAPE_KINDS = {0x5002, 0x5004, 0x5005, 0x502A, 0x5031}
+# New-kind islands verified 2026-10-16 (E/G/N官样 cross-file groups).
+SHAPE_KINDS = {0x5002, 0x5004, 0x5005, 0x5006, 0x5009, 0x5023, 0x5029,
+               0x502A, 0x502D, 0x502E, 0x5031, 0x5032, 0x5033, 0x503A}
 
 # Variable-length text proven safe (nested counts understood).
 VARLEN_TEXT_KINDS = {0x5008, 0x5025, 0x5027}
