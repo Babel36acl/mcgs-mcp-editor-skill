@@ -25,6 +25,26 @@ class NativeTests(unittest.TestCase):
                     self.assertEqual(result['writes'],[{'object_id':2,'value':100. if compare(value,10.) else 200.}])
                     self.assertEqual(result['values'][1],value)
 
+    def test_bytecode_inspection_matches_native_subset(self):
+        from bytecode_inspect import inspect_program, OPS
+        from conditional_codegen import ConditionalCodegen
+        from vendor_vm import VendorVM
+        observed = set()
+        for token in ('=', '<>', '<', '>', '<=', '>='):
+            for lhs in ('Input', '10'):
+                source = f'If {lhs} {token} 10 Then\nResult = 1 + 2\nElse\nResult = Input + 1\nEndIf'
+                code, _ = ConditionalCodegen(EDITOR,RUNTIME).compile(source, {'Input':1,'Result':2})
+                report = inspect_program(code)
+                self.assertEqual(report['read_object_ids'], [1])
+                self.assertEqual(report['write_object_ids'], [2])
+                self.assertEqual(report['unreachable_offsets'], [])
+                decoded = {row['opcode'] for row in report['instructions']}
+                observed.update(int(op,16) for op in decoded)
+                for value in (9.,10.,11.):
+                    result = VendorVM({1:value,2:0.},RUNTIME).run(code)
+                    self.assertTrue(set(result['opcodes']) <= decoded)
+        self.assertEqual(observed, set(OPS))
+
     def test_nested_addition_and_no_else(self):
         from conditional_codegen import ConditionalCodegen
         from vendor_vm import VendorVM

@@ -28,6 +28,8 @@ python mcgs-mcp-editor/scripts/script_tool.py --help
 
 原厂代码生成器在 Unicorn 中生成操作码和分支位移；解释器仿真使用内存数值对象，不执行真实设备 I/O。它是受限 BASIC 子集，不是完整工程编译器或官方 API。真实页面仍需模板、变量映射和宿主验收，不能把数据库可读等同于工程有效。
 
+`script_tool.py inspect --program <program.json>` 可在不安装原厂程序或仿真依赖的情况下，检查当前数值子集的字节码、跳转边界及控制流栈类型，并列出对象读写引用。它覆盖 21 种已查证指令，未知指令和非零参数/局部变量头部明确拒绝。详见[工具用法](mcgs-mcp-editor/references/usage.md)。
+
 ## 测试
 
 ```powershell
