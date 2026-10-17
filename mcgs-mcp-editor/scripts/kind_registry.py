@@ -4,15 +4,16 @@ Evidence: Ghidra 12.1.4 ctor decompilations of McgsSetPro.exe
 (a8e1ce78535ea3db0ca5fdb54306df7f9b56f298ca1025f2e20e337347fd6f54);
 each class ctor pushes its kind constant then installs its vftable.
 Field islands per kind come from equal-length multi-record alignment
-of real MCPs (see analysis/rea-exe-20261016/group-*.json and
-assembly-mini-20261016/group-newkinds-*.json: 10/11 new kinds mapped,
-0x5039 CDrawCell still singleton-only).
+of real MCPs; 10/11 new kinds have field-position evidence,
+while 0x5039 CDrawCell still lacks equal-length multi-record evidence.
+See ../references/format.md for evidence levels and layout limits.
 
 Policy (fail-closed):
 - string: all registered kinds, but variable-length text changes are only
   allowed where nested length behavior is proven (label/input/button);
   other kinds accept same-length text only (delta 0 cannot shift offsets).
-- rectangle (int32 x4 @ payload+24): widget kinds with verified rect only.
+- rectangle: verified int32 x4 layouts only; the profile supplies the
+  independently checked offset (label +12, most widgets +24, DLL either).
 - input_binding / input_range: 0x5025 only (binding ID + [max,min] proven).
 - event (source + compiled array): 0x5027 only (nested length behavior proven).
 Unknown kinds are always rejected; offsets still come from the profile,
@@ -44,12 +45,14 @@ KIND_CLASSES = {
     0x503D: 'CDrawDll',
 }
 
-# int32 (left, top, right, bottom) @ payload+24, verified by alignment.
-# 0x503C verified 2026-10-16 (G-sample 498B x5 real pixel rect + name@78).
+# int32 (left, top, right, bottom); offsets are profile-specific, not selected
+# by kind. Label samples use +12; DLL samples include both +12 and +24.
+# 0x503C has file-side evidence at +24 (498B x5, name@78), not host acceptance.
 RECT_WIDGETS = {0x5008, 0x5025, 0x5027, 0x5028, 0x503C, 0x503D}
 
-# u16 geometry words @ payload+12..24, int32 rect does NOT apply here.
-# New-kind islands verified 2026-10-16 (E/G/N官样 cross-file groups).
+# Geometry candidates at +12/+16/+20/+24; low-word variation alone does
+# not prove field width or signedness. No rectangle edits for these kinds.
+# New-kind field positions come from native-sample cross-file groups.
 SHAPE_KINDS = {0x5002, 0x5004, 0x5005, 0x5006, 0x5009, 0x5023, 0x5029,
                0x502A, 0x502D, 0x502E, 0x5031, 0x5032, 0x5033, 0x503A}
 

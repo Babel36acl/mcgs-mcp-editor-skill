@@ -49,7 +49,8 @@ class KindRegistryTests(unittest.TestCase):
                                           id_offset=0, expected_id=1, value_id=2)])
 
     def test_new_shape_kinds_geometry_classified(self):
-        # 2026-10-16 官样岛图：503c 为 int32 矩形族，其余新 kind 为 u16 几何族。
+        # Native-sample evidence permits 503c's int32 rectangle; the other
+        # new kinds still lack sufficient evidence for rectangle edits.
         check_patchable(0x503C, [edit('rectangle', expected=[0, 0, 1, 1],
                                           value=[0, 0, 2, 2])])
         for kind in (0x5006, 0x5009, 0x5023, 0x5029, 0x502D, 0x502E,

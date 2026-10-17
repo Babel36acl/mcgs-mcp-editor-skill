@@ -61,7 +61,7 @@ Python 调用入口为 `bytecode_inspect.inspect_program(code: bytes)`，返回�
 | input_range | `offset`, `expected` 原 `[max,min]`, `value` 新范围 |
 | event | `offset` 源码字符串位置, `expected` 原源码, `expected_code_sha256` 原字节数组哈希, `program_file` 相对本清单的生成报告路径 |
 
-JSON 可以组合标签改字、输入框 input_binding 改绑与 input_range、按钮 event。新类型（标签/输入框/按钮之外）的文字编辑只允许等长；`rectangle` 只允许矩形已验证的部件类（注册表家族列），偏移仍由样本查证，标签已验收样本为 +12，不统一套 +24；`input_binding`/`input_range` 仅 0x5025，`event` 仅 0x5027。顶层可选 `new_windows` 数组建窗口，每项为 `template_window_id`、`new_name`、可选 `note`；新窗口复制模板窗口内容原样，窗口名必须唯一，内部控件名重复由宿主验收覆盖。绑定时同步名称和对象 ID，不依赖宿主替你修补旧 ID。`nested_counts` 不是自动推断结果，必须来自模板取证，尤其不能省略按钮样式内部的长度字段。只编辑不在数组内的字段时可为空。
+JSON 可以组合标签改字、输入框 input_binding 改绑与 input_range、按钮 event。新类型（标签/输入框/按钮之外）的文字编辑只允许等长；`rectangle` 只允许已查证四个 int32 矩形的类型，偏移仍由样本查证：标签已验收样本为 +12，下拉框样本为 +24，DLL 控件存在 +12 和 +24 两种布局，不统一套 +24。字段分组中的几何候选没有因此获得编辑能力；候选 `0x5030` 继续拒绝。`input_binding`/`input_range` 仅 0x5025，`event` 仅 0x5027。顶层可选 `new_windows` 数组建窗口，每项为 `template_window_id`、`new_name`、可选 `note`；新窗口复制模板窗口内容原样，窗口名必须唯一，内部控件名重复由宿主验收覆盖。绑定时同步名称和对象 ID，不依赖宿主替你修补旧 ID。`nested_counts` 不是自动推断结果，必须来自模板取证，尤其不能省略按钮样式内部的长度字段。只编辑不在数组内的字段时可为空。
 
 ```powershell
 python mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP --profile D:/Experiments/edits.json --output D:/Experiments/edited.MCP
@@ -73,7 +73,7 @@ Python API 同样可用：`mcp_tool.inspect(path)`、`mcp_tool.patch(source, out
 
 ## 变量和设备通道请求
 
-`input_binding` 只修改画面控件的既有变量引用；`new_windows` 只复制窗口。两者都不会创建 `System.ObjData` 变量或注册设备通道。CLI 当前没有新变量或设备通道创建入口，不要在清单中加入自造的通道字段并认为工具会处理。
+`input_binding` 只修改画面控件的既有变量引用；`new_windows` 只复制窗口。两者都不会创建 `System` 表中 `strName=ObjData` 记录内的变量或注册设备通道。CLI 当前没有新变量或设备通道创建入口，不要在清单中加入自造的通道字段并认为工具会处理。
 
 涉及新地址、通道别名、设备绑定或从模板搭建工程时，先读 [通道加载与验证边界](device-channels.md)。字节新增通道曾在数据库回读正常后被宿主静默丢弃并在保存时删除；新增地址使用宿主原生流程。现有地址库内改别名、换绑定仍属待验实验，不能因为早期克隆报告成功就免除保存重开及 CSV 复验。
 
