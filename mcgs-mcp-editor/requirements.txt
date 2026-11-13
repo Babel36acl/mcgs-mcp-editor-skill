@@ -1,3 +1,8 @@
+# Runtime dependencies for the skill.
+# NOTE: a Microsoft Access ODBC driver is required for 'patch' (Windows only)
+# and is NOT installable from pip; install Access/ACE with the same bitness as
+# Python. See README section "依赖与驱动".
+# 'inspect' only needs access-parser; native compile/simulate need pefile + unicorn.
 access-parser==0.0.6
 pefile==2024.8.26
 unicorn==2.1.4

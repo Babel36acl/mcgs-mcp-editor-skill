@@ -2,6 +2,22 @@
 
 以下命令从仓库根目录执行；安装后使用技能目录下相同的 `scripts/` 入口。输出文件须为新路径。工具不会原地覆盖输入 MCP。
 
+## 依赖与驱动
+
+| 命令 | Python 包 | 系统依赖 |
+| --- | --- | --- |
+| `mcp_tool.py inspect`、`script_tool.py inspect` | `access-parser`（后者仅标准库） | 无 |
+| `mcp_tool.py patch` | `access-parser` + `pyodbc` | **Windows + 与 Python 位数一致的 Access ODBC 驱动** |
+| `script_tool.py compile/simulate` | `pefile` + `unicorn` | 用户自备的 McgsPro 3.5.1.7267 二进制 |
+
+Access 驱动不是 pip 包，也不能随仓库分发：由 Office/Access 安装提供，或单独安装 **Microsoft Access Database Engine**（ACE 2016/2010 Redistributable，位数须与 Python 一致）。装完用下面的命令确认驱动名：
+
+```powershell
+python -c "import pyodbc; print('\n'.join(pyodbc.drivers()))"
+```
+
+默认使用 `Microsoft Access Driver (*.mdb, *.accdb)`；只有旧式 `.mdb` 驱动时可用 `--driver "Microsoft Access Driver (*.mdb)"`（Jet 4.0，通常仅 32 位）。常见故障：`Data source name not found` → 驱动未装或名字不符；`The specified DSN contains an architecture mismatch` → Python 与驱动位数不一致；装了 Access/Office 却看不到驱动时，检查是否只有另一种位数的 ACE。
+
 ## 读取工程
 
 ```powershell

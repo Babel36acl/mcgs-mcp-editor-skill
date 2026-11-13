@@ -20,6 +20,7 @@
 - [30 秒判断是否适用](#30-秒判断是否适用)
 - [能力矩阵](#能力矩阵)
 - [快速开始](#快速开始)
+- [依赖与驱动](#依赖与驱动)
 - [安装为 Agent 技能](#安装为-agent-技能)
 - [仓库结构](#仓库结构)
 - [命令行参考](#命令行参考)
@@ -79,7 +80,7 @@ MCGS Pro 的工程是 Access 数据库，窗口内容又是 MFC `CArchive` 序�
 
 ## 快速开始
 
-前置：Windows（`patch` 需要 Access ODBC 驱动）、Python 与驱动位数一致、自备已安装的 McgsPro 3.5.1.7267。
+前置：Windows（`patch` 需要 Access ODBC 驱动，见 [依赖与驱动](#依赖与驱动)）、Python 与驱动位数一致、自备已安装的 McgsPro 3.5.1.7267。
 
 ```powershell
 git clone https://github.com/Babel36acl/mcgs-mcp-editor-skill.git
@@ -106,6 +107,34 @@ python mcgs-mcp-editor/scripts/script_tool.py inspect --program D:/Experiments/p
 - 工具**从不原地覆盖**输入：输出路径已存在会直接拒绝，失败产物只能用于取证。
 - 编辑清单里的 `sha256` 不匹配（源文件被改过）、预期旧值不匹配、偏移越界、嵌套长度交叉，都会中止而不是"尽量写"。
 - `DATABASE_ROUNDTRIP_ONLY_HOST_ACCEPTANCE_REQUIRED` 是工具返回的固定状态字：**文件回读通过 ≠ 宿主可用**。
+
+## 依赖与驱动
+
+| 能力 | Python 包 | 系统依赖 |
+| --- | --- | --- |
+| `inspect`（只读） | `access-parser` | 无，纯 Python 读 Access 文件 |
+| `script_tool.py inspect` | 仅标准库 | 无 |
+| `patch`（写入） | `access-parser` + `pyodbc` | **Windows + Access ODBC 驱动**，位数与 Python 一致 |
+| `compile` / `simulate` | `pefile` + `unicorn` | 自备 McgsPro 3.5.1.7267 二进制 |
+
+Access 驱动的要点：
+
+- **不是 pip 包，也不能随仓库分发。** 来源是已安装的 Office/Access，或单独安装 **Microsoft Access Database Engine**（ACE 2016 / 2010 Redistributable）。
+- **位数必须与 Python 一致**：64 位 Python 配 64 位 ACE，32 位配 32 位。机器上已有另一种位数的 Office 时，64 位 ACE 可能拒绝安装；改用同位数 Python 或先处理 Office 位数。
+- 默认驱动名 `Microsoft Access Driver (*.mdb, *.accdb)`，可用 `patch --driver` 指定实际名称。只有旧式 `.mdb` 驱动时也可用 `Microsoft Access Driver (*.mdb)`（Jet 4.0，通常仅 32 位）。
+- 只读路径不需要驱动：没有 Access/ODBC 也能跑 `inspect` 与 `script_tool.py inspect`，只是不能写回数据库。
+
+装完先自检：
+
+```powershell
+python -c "import pyodbc; print('\n'.join(pyodbc.drivers()))"
+```
+
+| 报错 | 原因 | 处理 |
+| --- | --- | --- |
+| `Data source name not found` / `IM002` | 驱动未安装或名称不符 | 安装 ACE，或用 `--driver` 填自检输出里的真实名称 |
+| `architecture mismatch` / `IM014` | Python 与驱动位数不同 | 换成与驱动同位的 Python，或补装对应位数 ACE |
+| `Can't open registry key 'Temporary (volatile) Jet DSN'` | 常见于位数不匹配或权限受限 | 先核对位数；不要通过改系统权限绕过 |
 
 ## 安装为 Agent 技能
 
@@ -140,7 +169,7 @@ Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
 │       ├── capabilities.md       入口清单与"已验/未验"分级
 │       ├── format.md             Access + CArchive 记录格式、22 类注册表
 │       ├── usage.md              命令、编辑清单字段、退出码
-│       ├── acceptance.md         V1 损坏根因、逐阶段宿主验收记录
+│       ├── acceptance.md         一次损坏版本的根因、逐阶段宿主验收记录
 │       ├── validation.md         证据分层、普查分母、与第三方实现对拍
 │       ├── variable-ids.md       变量 ObjData 布局与 ID/绑定线索
 │       └── device-channels.md    设备通道加载丢弃、占址与验证路径
@@ -217,6 +246,7 @@ Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
 - 不修改系统权限、不改 UAC/UIPI 设置来绕过宿主隔离；宿主 UI 受限时完成文件侧工作并列明未验项。
 - 不提供厂商软件下载，不改变产品授权/许可机制，不声称官方接口。
 - 发布内容只含原创工具、格式事实与**合成**测试数据；真实 MCP、厂商二进制、控件库、图片、反编译清单、包含私有变量/路径的报告一律留在本地（细则见 [CONTRIBUTING](CONTRIBUTING.md)）。
+- **文档已脱敏**：仓库内不出现工程名、画面名、变量名、工程产物哈希与本机路径；历史验收只保留「哪一层证据、确认了什么、还缺什么」，不保留具体工程结构。
 - 仿真只在 Unicorn 内执行原厂机器码，外部调用白名单仅限受限内存复制；这不构成 DLL 整体安全结论，也不代表真实设备行为。
 
 ## 开发与测试
@@ -248,7 +278,7 @@ python -m unittest discover -s tests -p test_native_codegen.py -v
 需要与 Python 位数一致的 Microsoft Access ODBC 驱动（32 位 Python 配 32 位驱动），驱动名默认 `Microsoft Access Driver (*.mdb, *.accdb)`，可用 `--driver` 覆盖。
 
 **改了控件但宿主说"工程已损坏"？**
-先查是否漏更新变长字段的嵌套长度 —— V1 的真实根因就是漏了三层 `u16`，复盘见 [acceptance.md](mcgs-mcp-editor/references/acceptance.md#v1-根因)。
+先查是否漏更新变长字段的嵌套长度 —— 曾经的真实根因就是漏了三层 `u16`，复盘见 [acceptance.md](mcgs-mcp-editor/references/acceptance.md#一次损坏版本的根因)。
 
 **为什么不能直接给我加个变量 / 加条设备通道？**
 变量分配与通道注册都还没建立通用规则；字节新增通道已被实测证明会在宿主加载时被静默丢弃并在保存后删除。需要新地址时走宿主原生"增加设备通道"，见 [通道边界](mcgs-mcp-editor/references/device-channels.md)。
