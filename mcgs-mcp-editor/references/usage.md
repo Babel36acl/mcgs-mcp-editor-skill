@@ -1,6 +1,6 @@
 # 命令与编辑清单
 
-以下命令从仓库根目录执行。输出文件须为新路径。工具不会原地覆盖输入 MCP。
+以下命令从仓库根目录执行；安装后使用技能目录下相同的 `scripts/` 入口。输出文件须为新路径。工具不会原地覆盖输入 MCP。
 
 ## 读取工程
 
@@ -8,7 +8,38 @@
 python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
 ```
 
-清单包含窗口 ID、记录索引、类型、payload 哈希和字符串候选。候选包含脚本等工程内容，属于使用者的本地资料，不应随公共仓库提交。普通字符串扫描会跳过带控制字符的多语言引用。
+清单包含窗口 ID、记录索引、类型、payload 哈希和字符串候选。每个窗口有 `status=parsed/rejected`，顶层 `summary` 给出窗口总数、成功数、拒绝数、成功窗口内的记录数及类型计数，`complete` 仅表示本解析器是否完整读取所有窗口。失败记录保留异常类型和原因；不能把拒绝窗口算作零控件。候选包含脚本等工程内容，属于使用者的本地资料，不应随公共仓库提交。普通字符串扫描会跳过带控制字符的多语言引用。
+
+自动流程需要完整窗口解析时加 `--require-complete`：输出报告后，只要存在拒绝窗口就以退出码 2 结束。默认 inspect 保留原退出行为，便于读取部分成功结果；两种模式都不修改 MCP。
+
+```powershell
+python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --require-complete > D:/Experiments/inventory.json
+```
+
+`complete=true` 不等于全部内部字段、变量引用或宿主行为通过；它只覆盖当前顶层窗口记录格式。
+
+### 窗口身份与明确导航字段
+
+`references` 独立输出 `consistent`、`mismatch`、`not_covered`。默认比较已识别 trailer 中的窗口名称/ID 与窗口行，同时检查重复窗口名称/ID。定位 trailer 以前必须完整解析窗口记录；拒绝窗口和未知尾部布局都保留为未覆盖。
+
+已从取证确定导航字段位置时，可传 `--reference-profile refs.json`。清单顶层为精确 `source_sha256` 和非空 `links` 数组；每项包含：
+
+| 属性 | 含义 |
+| --- | --- |
+| type | 固定为 `window_navigation` |
+| window_id / record_index / kind | 来源窗口、完整记录索引、类型 |
+| sha256 | 来源控件完整 payload 的 SHA-256 |
+| name_offset / id_offset | 已确定的目标窗口名称 CArchive 字符串与 u32 ID 在 payload 中的位置 |
+
+工具从实际字节读取名称/ID，并检查它们是否指向唯一的同一窗口；缺失、重复或名字与 ID 指向不同窗口均报告 mismatch。清单过期、字段越界或来源窗口无法完整解析时拒绝检查。清单是字段位置证据，不是自动导航识别器；不能把任意同名文本当导航。
+
+```powershell
+python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --reference-profile D:/Experiments/refs.json --fail-on-reference-mismatch
+```
+
+`--fail-on-reference-mismatch` 在报告后以退出码 3 表示发现不一致；同时启用 `--require-complete` 且有记录解析拒绝时优先返回 2。没有 mismatch 仍可能存在 not_covered；变量绑定、资源引用、未提供清单的导航、删除行语义和宿主行为均不在当前引用检查范围。默认 inspect 不因引用不一致改变退出码。
+
+模板窗口复制原样保留旧 trailer，可能被新身份检查报告名称/ID 不一致；此发现不触发自动写回，也不能单凭它推定宿主必然损坏。仍须按当前产物检查宿主保存后的变化。
 
 ## 生成及模拟脚本
 
@@ -47,7 +78,7 @@ Python 调用入口为 `bytecode_inspect.inspect_program(code: bytes)`，返回�
 | 属性 | 含义 |
 | --- | --- |
 | action | `replace` 或同窗口 `clone` |
-| record_index / kind | 原记录索引及类型，例如 `"0x5008"`；类型必须在注册表 21 种之内（见格式文档），未知类型拒绝 |
+| record_index / kind | 原记录索引及类型，例如 `"0x5008"`；类型须已登记（当前 22 类），且操作通过该类门禁；0x5026 当前仍拒绝所有显式字段编辑 |
 | sha256 | 原 payload 的精确 SHA-256 |
 | edits | 下表中的显式字段编辑 |
 | nested_counts | 覆盖变长字段的所有嵌套 u16 计数字段；每项为 `offset` 和 `expected` |
@@ -57,11 +88,12 @@ Python 调用入口为 `bytecode_inspect.inspect_program(code: bytes)`，返回�
 | --- | --- |
 | string | `offset`, `expected` 原文字, `value` 新文字 |
 | rectangle | `offset`, `expected` 原 `[l,t,r,b]`, `value` 新矩形 |
+| horizontal_move | 仅样本限定的 5004/5006：`offset=12`, `expected` 原 `[l,t,r,b]`, `dx` 有符号整数；不接受 value/dy 等其他字段 |
 | input_binding | `offset`, `expected` 原变量名, `value` 新变量名；另给 `id_offset`, `expected_id`, `value_id` 同步绑定对象 ID |
 | input_range | `offset`, `expected` 原 `[max,min]`, `value` 新范围 |
 | event | `offset` 源码字符串位置, `expected` 原源码, `expected_code_sha256` 原字节数组哈希, `program_file` 相对本清单的生成报告路径 |
 
-JSON 可以组合标签改字、输入框 input_binding 改绑与 input_range、按钮 event。新类型（标签/输入框/按钮之外）的文字编辑只允许等长；`rectangle` 只允许已查证四个 int32 矩形的类型，偏移仍由样本查证：标签已验收样本为 +12，下拉框样本为 +24，DLL 控件存在 +12 和 +24 两种布局，不统一套 +24。字段分组中的几何候选没有因此获得编辑能力；候选 `0x5030` 继续拒绝。`input_binding`/`input_range` 仅 0x5025，`event` 仅 0x5027。顶层可选 `new_windows` 数组建窗口，每项为 `template_window_id`、`new_name`、可选 `note`；新窗口复制模板窗口内容原样，窗口名必须唯一，内部控件名重复由宿主验收覆盖。绑定时同步名称和对象 ID，不依赖宿主替你修补旧 ID。`nested_counts` 不是自动推断结果，必须来自模板取证，尤其不能省略按钮样式内部的长度字段。只编辑不在数组内的字段时可为空。
+JSON 可以组合标签改字、输入框 input_binding 改绑与 input_range、按钮 event。除当前拒绝显式编辑的 0x5026 外，新类型（标签/输入框/按钮之外）的文字编辑只允许等长；`rectangle` 只允许已查证四个 int32 矩形的类型，偏移仍由样本查证：标签已验收样本为 +12，下拉框样本为 +24，DLL 控件存在 +12 和 +24 两种布局，不统一套 +24。正式 rectangle 六类及各布局的实验/宿主证据见 [能力清单](capabilities.md)。5004/5006 另有样本指纹限定的 horizontal_move；其余图形几何候选没有因此获得正式 CLI 入口。horizontal_move 的控件清单必须含 kind，单控件只允许一个横移编辑且不带 nested_counts；尺寸、纵坐标、样式及名称均锁定，不能借此缩放或改名。候选 `0x5030` 继续拒绝。`input_binding`/`input_range` 仅 0x5025，`event` 仅 0x5027。顶层可选 `new_windows` 数组建窗口，每项为 `template_window_id`、`new_name`、可选 `note`；新窗口复制模板窗口内容原样，窗口名必须唯一，内部控件名重复由宿主验收覆盖。绑定时同步名称和对象 ID，不依赖宿主替你修补旧 ID。`nested_counts` 不是自动推断结果，必须来自模板取证，尤其不能省略按钮样式内部的长度字段。只编辑不在数组内的字段时可为空。
 
 ```powershell
 python mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP --profile D:/Experiments/edits.json --output D:/Experiments/edited.MCP

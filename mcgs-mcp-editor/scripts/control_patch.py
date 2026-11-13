@@ -53,6 +53,15 @@ def patch_payload(payload, profile):
                 raise ArchiveError('Rectangle must have positive width and height')
             if kind == 'input_range' and not (all(math.isfinite(x) for x in values) and values[1]<=values[0]):
                 raise ArchiveError('Input range order is [maximum, minimum]')
+        elif kind == 'horizontal_move':
+            from shape_geometry import horizontal_coordinates
+            if len(profile['edits']) != 1 or profile.get('nested_counts'):
+                raise ArchiveError('Verified horizontal move cannot be combined with other edits')
+            try:
+                control_kind = int(str(profile['kind']), 0)
+            except (KeyError, TypeError, ValueError) as exc:
+                raise ArchiveError('Horizontal move requires the control kind in the profile') from exc
+            end, new = offset+16, horizontal_coordinates(control_kind, payload, edit)
         elif kind == 'event':
             old = read_string(payload, offset)
             if old['text'] != edit['expected']:

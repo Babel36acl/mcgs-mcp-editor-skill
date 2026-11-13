@@ -1,5 +1,6 @@
 """Inspect MCP windows or apply a reviewed control profile to a new Access copy."""
 import argparse
+from collections import Counter
 import copy
 import json
 from pathlib import Path
@@ -15,21 +16,35 @@ def snapshot(path):
     return {name:db.parse_table(name) for name in db.catalog if not name.startswith('MSys')}
 
 
-def inspect(path):
+def inspect(path, reference_profile=None):
+    raw = path.read_bytes()
     tables = snapshot(path)
+    if path.read_bytes() != raw:
+        raise ArchiveError('Source changed while inspecting')
     windows = tables['WndUser']
     result = []
+    parsed_windows = {}
     for row, ident in enumerate(windows['iID']):
         blob = windows['lbObjects'][row]
         try:
             parsed = parse_window(blob)
+            parsed_windows[row] = parsed
             records = [dict(index=r['index'],kind=hex(r['kind']),size=len(r['payload']),
                             sha256=digest(r['payload']),strings=list(scan_unicode_strings(r['payload'])))
                        for r in parsed['records']]
-            result.append(dict(id=ident,records=records,trailer_preserved=True))
+            result.append(dict(id=ident,status='parsed',records=records,trailer_preserved=True))
         except (ArchiveError,TypeError) as exc:
-            result.append(dict(id=ident,error=str(exc)))
-    return dict(source=str(path.resolve()),sha256=digest(path.read_bytes()),windows=result,
+            result.append(dict(id=ident,status='rejected',error_type=type(exc).__name__,error=str(exc)))
+    parsed_count = sum(item['status']=='parsed' for item in result)
+    kinds = Counter(record['kind'] for item in result for record in item.get('records', []))
+    summary = dict(windows_total=len(result),windows_parsed=parsed_count,
+                   windows_rejected=len(result)-parsed_count,
+                   records_in_parsed_windows=sum(kinds.values()),kind_counts=dict(sorted(kinds.items())))
+    from reference_check import check_references
+    references = check_references(windows, parsed_windows, digest(raw), reference_profile)
+    return dict(source=str(path.resolve()),sha256=digest(raw),windows=result,
+                complete=parsed_count==len(result),summary=summary,
+                references=references,
                 scope='Top-level record framing; string scans are discovery, not nested serializers')
 
 
@@ -155,13 +170,21 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command',required=True)
     read = sub.add_parser('inspect'); read.add_argument('mcp',type=Path)
+    read.add_argument('--require-complete',action='store_true',
+                      help='Exit 2 after reporting if any window was rejected')
+    read.add_argument('--reference-profile',type=Path,
+                      help='Read-only navigation field locations pinned to source and payload hashes')
+    read.add_argument('--fail-on-reference-mismatch',action='store_true',
+                      help='Exit 3 after reporting a mismatch; uncovered references remain listed separately')
     write = sub.add_parser('patch'); write.add_argument('mcp',type=Path)
     write.add_argument('--profile',type=Path,required=True)
     write.add_argument('--output',type=Path,required=True)
     write.add_argument('--driver',default='Microsoft Access Driver (*.mdb, *.accdb)')
     args = parser.parse_args()
     if args.command == 'inspect':
-        result = inspect(args.mcp)
+        reference_profile = (json.loads(args.reference_profile.read_text(encoding='utf-8-sig'))
+                             if args.reference_profile else None)
+        result = inspect(args.mcp, reference_profile)
     else:
         profile = json.loads(args.profile.read_text(encoding='utf-8-sig'))
         for control in profile.get('controls', []):
@@ -170,6 +193,10 @@ def main():
                     edit['program'] = json.loads((args.profile.parent/edit['program_file']).read_text(encoding='utf-8-sig'))
         result = patch(args.mcp,args.output,profile,args.driver)
     print(json.dumps(result,ensure_ascii=False,indent=2))
+    if args.command == 'inspect' and args.require_complete and not result['complete']:
+        raise SystemExit(2)
+    if args.command == 'inspect' and args.fail_on_reference_mismatch and result['references']['summary']['mismatch']:
+        raise SystemExit(3)
 
 
 if __name__ == '__main__':
