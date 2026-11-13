@@ -19,6 +19,7 @@
 - [它解决什么问题](#它解决什么问题)
 - [30 秒判断是否适用](#30-秒判断是否适用)
 - [能力矩阵](#能力矩阵)
+- [覆盖范围与迭代](#覆盖范围与迭代)
 - [快速开始](#快速开始)
 - [依赖与驱动](#依赖与驱动)
 - [安装为 Agent 技能](#安装为-agent-技能)
@@ -28,6 +29,7 @@
 - [证据分级：什么叫"验证过"](#证据分级什么叫验证过)
 - [兼容性与版本锁定](#兼容性与版本锁定)
 - [安全边界与发布范围](#安全边界与发布范围)
+- [进阶：继续逆向 MCGS Pro（推荐 REA）](#进阶继续逆向-mcgs-pro推荐-rea)
 - [开发与测试](#开发与测试)
 - [常见问题](#常见问题)
 - [许可与商标](#许可与商标)
@@ -77,6 +79,16 @@ MCGS Pro 的工程是 Access 数据库，窗口内容又是 MFC `CArchive` 序�
 | 新变量、设备通道、跨窗口引用 | — | ❌ 无入口（见 [通道边界](mcgs-mcp-editor/references/device-channels.md)） |
 
 登记类型共 **22 类**（类型身份 ≠ 可编辑能力）；`0x5026 CDrawFlow` 仅识别身份、拒绝所有显式编辑；`0x5030` 报表仍是候选、不登记；`0x5039` 只有等长文字入口。
+
+## 覆盖范围与迭代
+
+**本仓库的结论是围绕手头可获得的工程副本做出来的，不代表 MCGS Pro 的全功能覆盖。** 已知的空白包括：报表/配方/曲线/报警/动画等场景没有通用配方、脚本只支持数值子集、变量与设备通道没有创建入口、多数图形控件只开放了受限几何。某份现成"配方"在你的版本上跑不通是正常结果，不是 bug 承诺。
+
+缺失的地方正是可以补的，欢迎迭代：
+
+- **新控件/新局面**：给出类型、记录长度、同长样本和一次宿主结果，就能开 issue 讨论，不需要先写完整解析器。
+- **新场景（配方、报表、曲线…）**：先用 `inspect` 交出窗口 ID、记录索引与 payload 哈希，再按 [证据分级](#证据分级什么叫验证过) 逐层补；本仓库拒绝没有样本支撑的偏移。
+- **旧结论被证伪**：直接提 correction，写清"旧说法 → 当前事实 → 证据"，我们会改文档而不是加免责声明。
 
 ## 快速开始
 
@@ -144,6 +156,7 @@ python -c "import pyodbc; print('\n'.join(pyodbc.drivers()))"
 | --- | --- |
 | OpenAI Codex | `~/.codex/skills/mcgs-mcp-editor/` |
 | Claude Code | `~/.claude/skills/mcgs-mcp-editor/` |
+| 任意支持 Agent Skills 的 Agent | `npx skills add Babel36acl/mcgs-mcp-editor-skill --skill mcgs-mcp-editor`（会自动识别并链接到已安装的 Agent） |
 | 共享 skills 目录（DSH 等） | `~/.agents/skills/mcgs-mcp-editor/` |
 | 不使用技能机制 | 直接把 `scripts/` 当普通 Python 工具调用 |
 
@@ -248,6 +261,21 @@ Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
 - 发布内容只含原创工具、格式事实与**合成**测试数据；真实 MCP、厂商二进制、控件库、图片、反编译清单、包含私有变量/路径的报告一律留在本地（细则见 [CONTRIBUTING](CONTRIBUTING.md)）。
 - **文档已脱敏**：仓库内不出现工程名、画面名、变量名、工程产物哈希与本机路径；历史验收只保留「哪一层证据、确认了什么、还缺什么」，不保留具体工程结构。
 - 仿真只在 Unicorn 内执行原厂机器码，外部调用白名单仅限受限内存复制；这不构成 DLL 整体安全结论，也不代表真实设备行为。
+
+## 进阶：继续逆向 MCGS Pro（推荐 REA）
+
+本仓库的格式结论来自静态逆向（Ghidra）加原生单字段差分。要把未覆盖的部分推下去——报表/配方布局、0x5026/0x5039 的字段语义、脚本指令集扩展——推荐用 **REA（Reverse Engineering Agent）**：把 Ghidra/Hopper/Cutter、PE/ELF/Mach-O 解析、函数反编译、交叉引用、字节/字符串搜索、Frida/GDB 动态调试统一成 MCP 工具集的逆向工作台。不用 REA 时，下面这些步骤用 Ghidra 手工做同样成立。
+
+一条可执行的路线：
+
+1. `open_binary` 打开 `McgsSetPro.exe`，`binary_overview` 记录镜像基址与段。
+2. `search_procedures` 找 `CDraw*`、`Serialize`、`CArchive` 相关过程；`analyze_function` 拿伪代码 + 调用/引用，`xrefs` 追字段读写。
+3. 用 `trace_feature` / `xrefs` 从构造器里的 kind 常量（0x5002…0x503D）追到对应的流读取路径——这是判断"某个类型到底怎么序列化"的关键证据。
+4. `inspect_pe_resources` 看对话框与资源；`search_bytes` 找 `MCGS-SET DOCUMENT`、`MCGS_DRAW_OBJ_PRO1` 等常量与剪贴板格式名。
+5. `script.dll`：`search_bytes` 定位 opcode handler 表，`analyze_function` 对照 `scripts/bytecode_inspect.py` 里的 `OPS` 表，扩指令集前先确认操作数编码。
+6. 需要运行时证据时，用 Frida/GDB/Rizin 在你自己的授权副本上做单字段对照（改一个属性、保存、比对完整 payload）。
+
+边界：REA 的输出属于**未验证材料**，结论要落回本仓库的[证据分级](#证据分级什么叫验证过)；厂商二进制、反编译清单、工程产物一律不进仓库（见 [CONTRIBUTING](CONTRIBUTING.md)）。
 
 ## 开发与测试
 

@@ -2,6 +2,14 @@
 
 本项目的版本线跟随**已查证的格式事实与门禁**，不跟随功能数量。每条变更注明证据层级；未验证的内容不进 `已支持`。
 
+## 0.5.2 — 2026-11-13
+
+### 覆盖范围与发布
+- README 新增「覆盖范围与迭代」：明确结论来自手头工程副本，不代表 MCGS Pro 全功能（报表/配方/曲线/报警、变量与通道创建等仍缺证据），欢迎按证据分层补 issue/PR。
+- README 新增「进阶：继续逆向 MCGS Pro（推荐 REA）」：给出 `open_binary` → `search_procedures`/`analyze_function`/`xrefs`/`trace_feature` → `inspect_pe_resources`/`search_bytes` → Frida/GDB 单字段对照的可执行路线，并声明 REA 输出属未验证材料。
+- 新增 skills.sh 安装入口（`npx skills add Babel36acl/mcgs-mcp-editor-skill --skill mcgs-mcp-editor`）；该目录无需提交，安装事件即索引来源。
+- `SKILL.md` 描述补充覆盖范围声明与 REA 使用指引；`CONTRIBUTING.md` 增加"以证据为界、欢迎迭代"章节。
+
 ## 0.5.1 — 2026-11-13
 
 ### 脱敏（去除工程相关信息）
