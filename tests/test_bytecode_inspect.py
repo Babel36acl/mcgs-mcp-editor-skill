@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'mcgs-mcp-editor/scripts'))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'skills/mcgs-mcp-editor/scripts'))
 from bytecode_inspect import inspect_program
 
 HEADER = bytes(12)

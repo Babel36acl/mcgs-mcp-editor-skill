@@ -5,7 +5,7 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'mcgs-mcp-editor/scripts'))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'skills/mcgs-mcp-editor/scripts'))
 EDITOR = os.environ.get('MCGS_EDITOR')
 RUNTIME = os.environ.get('MCGS_RUNTIME')
 

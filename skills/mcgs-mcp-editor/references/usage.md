@@ -21,7 +21,7 @@ python -c "import pyodbc; print('\n'.join(pyodbc.drivers()))"
 ## 读取工程
 
 ```powershell
-python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
 ```
 
 清单包含窗口 ID、记录索引、类型、payload 哈希和字符串候选。每个窗口有 `status=parsed/rejected`，顶层 `summary` 给出窗口总数、成功数、拒绝数、成功窗口内的记录数及类型计数，`complete` 仅表示本解析器是否完整读取所有窗口。失败记录保留异常类型和原因；不能把拒绝窗口算作零控件。候选包含脚本等工程内容，属于使用者的本地资料，不应随公共仓库提交。普通字符串扫描会跳过带控制字符的多语言引用。
@@ -29,7 +29,7 @@ python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D
 自动流程需要完整窗口解析时加 `--require-complete`：输出报告后，只要存在拒绝窗口就以退出码 2 结束。默认 inspect 保留原退出行为，便于读取部分成功结果；两种模式都不修改 MCP。
 
 ```powershell
-python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --require-complete > D:/Experiments/inventory.json
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --require-complete > D:/Experiments/inventory.json
 ```
 
 `complete=true` 不等于全部内部字段、变量引用或宿主行为通过；它只覆盖当前顶层窗口记录格式。
@@ -50,7 +50,7 @@ python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --r
 工具从实际字节读取名称/ID，并检查它们是否指向唯一的同一窗口；缺失、重复或名字与 ID 指向不同窗口均报告 mismatch。清单过期、字段越界或来源窗口无法完整解析时拒绝检查。清单是字段位置证据，不是自动导航识别器；不能把任意同名文本当导航。
 
 ```powershell
-python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --reference-profile D:/Experiments/refs.json --fail-on-reference-mismatch
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP --reference-profile D:/Experiments/refs.json --fail-on-reference-mismatch
 ```
 
 `--fail-on-reference-mismatch` 在报告后以退出码 3 表示发现不一致；同时启用 `--require-complete` 且有记录解析拒绝时优先返回 2。没有 mismatch 仍可能存在 not_covered；变量绑定、资源引用、未提供清单的导航、删除行语义和宿主行为均不在当前引用检查范围。默认 inspect 不因引用不一致改变退出码。
@@ -72,9 +72,9 @@ EndIf
 `symbols.json` 使用 `{"Result": 7}`；这里的 7 仅是合成示例，真实工程必须重新查证。`values.json` 使用 `{"7": 0}`。
 
 ```powershell
-python mcgs-mcp-editor/scripts/script_tool.py compile --source D:/Experiments/script.txt --symbols D:/Experiments/symbols.json --editor C:/McgsPro/Program/McgsSetPro.exe --runtime C:/McgsPro/Program/script.dll --output D:/Experiments/program.json
-python mcgs-mcp-editor/scripts/script_tool.py inspect --program D:/Experiments/program.json
-python mcgs-mcp-editor/scripts/script_tool.py simulate --program D:/Experiments/program.json --values D:/Experiments/values.json --runtime C:/McgsPro/Program/script.dll
+python skills/mcgs-mcp-editor/scripts/script_tool.py compile --source D:/Experiments/script.txt --symbols D:/Experiments/symbols.json --editor C:/McgsPro/Program/McgsSetPro.exe --runtime C:/McgsPro/Program/script.dll --output D:/Experiments/program.json
+python skills/mcgs-mcp-editor/scripts/script_tool.py inspect --program D:/Experiments/program.json
+python skills/mcgs-mcp-editor/scripts/script_tool.py simulate --program D:/Experiments/program.json --values D:/Experiments/values.json --runtime C:/McgsPro/Program/script.dll
 ```
 
 `program.json` 把源码、符号映射、字节码和生成器哈希放在同一文件。仿真数据由 JSON 提供，不连接 HMI 或控制器。支持的条件为数值原子之间的 `= <> < > <= >=`，赋值右侧支持原子和加法。`If` 最多嵌套 8 层，源码最多 128 个非空行；拒绝未支持语法，不默默降级。
@@ -112,7 +112,7 @@ Python 调用入口为 `bytecode_inspect.inspect_program(code: bytes)`，返回�
 JSON 可以组合标签改字、输入框 input_binding 改绑与 input_range、按钮 event。除当前拒绝显式编辑的 0x5026 外，新类型（标签/输入框/按钮之外）的文字编辑只允许等长；`rectangle` 只允许已查证四个 int32 矩形的类型，偏移仍由样本查证：标签已验收样本为 +12，下拉框样本为 +24，DLL 控件存在 +12 和 +24 两种布局，不统一套 +24。正式 rectangle 六类及各布局的实验/宿主证据见 [能力清单](capabilities.md)。5004/5006 另有样本指纹限定的 horizontal_move；其余图形几何候选没有因此获得正式 CLI 入口。horizontal_move 的控件清单必须含 kind，单控件只允许一个横移编辑且不带 nested_counts；尺寸、纵坐标、样式及名称均锁定，不能借此缩放或改名。候选 `0x5030` 继续拒绝。`input_binding`/`input_range` 仅 0x5025，`event` 仅 0x5027。顶层可选 `new_windows` 数组建窗口，每项为 `template_window_id`、`new_name`、可选 `note`；新窗口复制模板窗口内容原样，窗口名必须唯一，内部控件名重复由宿主验收覆盖。绑定时同步名称和对象 ID，不依赖宿主替你修补旧 ID。`nested_counts` 不是自动推断结果，必须来自模板取证，尤其不能省略按钮样式内部的长度字段。只编辑不在数组内的字段时可为空。
 
 ```powershell
-python mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP --profile D:/Experiments/edits.json --output D:/Experiments/edited.MCP
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP --profile D:/Experiments/edits.json --output D:/Experiments/edited.MCP
 ```
 
 Python API 同样可用：`mcp_tool.inspect(path)`、`mcp_tool.patch(source, output, profile, driver)`、`control_patch.patch_payload(payload, profile)`。API 的 event 使用 `program` 字典；CLI 从 `program_file` 读取该字典。工具返回数据库回读状态，不声称宿主已验收。

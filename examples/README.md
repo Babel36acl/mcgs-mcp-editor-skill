@@ -12,7 +12,7 @@
 
 ```powershell
 # 1) 盘点（只读）
-python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
 
 # 2) 从 inventory.json 抄出：文件 sha256、目标窗口 id、目标控件 record_index/kind/sha256
 #    再用 read_string 定位字段偏移（不是猜）
@@ -21,7 +21,7 @@ python -c "import json;s=json.load(open('D:/Experiments/inventory.json',encoding
 # 3) 改写 examples/edit-profile.example.json 里的占位值 → 你的 edits.json
 
 # 4) 写入新文件（Windows + Access ODBC 驱动）
-python mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP `
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP `
   --profile D:/Experiments/edits.json --output D:/Experiments/edited.MCP
 
 # 5) 宿主验收：打开 → 属性 → Ctrl+E → 动作/输入 → 保存关闭重开 → 再回读比对

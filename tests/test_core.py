@@ -4,7 +4,7 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'mcgs-mcp-editor/scripts'))
+sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'skills/mcgs-mcp-editor/scripts'))
 from control_patch import digest, patch_payload, unicode_string
 from mfc_archive import ArchiveError, read_string
 from wnduser_records import parse_window, pack_record, append_records

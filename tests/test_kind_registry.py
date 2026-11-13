@@ -2,7 +2,7 @@ import sys
 import unittest
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'mcgs-mcp-editor/scripts'))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'skills/mcgs-mcp-editor/scripts'))
 
 from kind_registry import KIND_CLASSES, RECT_WIDGETS, NEVER_EDITABLE, check_patchable
 from shape_geometry import HORIZONTAL_SAMPLES

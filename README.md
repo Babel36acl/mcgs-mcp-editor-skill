@@ -71,12 +71,12 @@ MCGS Pro 的工程是 Access 数据库，窗口内容又是 MFC `CArchive` 序�
 | 标签改字（变长中文） | `patch` / `string`（0x5008） | 宿主验收 |
 | 输入框改绑 + 上下限 | `input_binding` / `input_range`（0x5025） | 宿主验收 |
 | 标准按钮事件（源码 + 编译数组） | `event`（0x5027） | 宿主验收（含 Ctrl+E） |
-| 矩形编辑 | `rectangle`（5008/5025/5027/5028/503C/503D） | 宿主验收或文件侧（见 [能力清单](mcgs-mcp-editor/references/capabilities.md)） |
+| 矩形编辑 | `rectangle`（5008/5025/5027/5028/503C/503D） | 宿主验收或文件侧（见 [能力清单](skills/mcgs-mcp-editor/references/capabilities.md)） |
 | 两份图形样本受限横移 | `horizontal_move`（5004/5006，92 B 指纹） | 宿主验收 + 样本锁定 |
 | 其他已登记类型等长改字 | `string` | 文件侧；不证明绑定/多语言引用 |
 | 同窗口控件克隆 / 模板窗口复制 | `action=clone` / `new_windows` | 宿主验收（限样本） |
 | 条件脚本编译 / 静态检查 / 仿真 | `script_tool.py compile/inspect/simulate` | 原厂机器码仿真 + 合成测试 |
-| 新变量、设备通道、跨窗口引用 | — | ❌ 无入口（见 [通道边界](mcgs-mcp-editor/references/device-channels.md)） |
+| 新变量、设备通道、跨窗口引用 | — | ❌ 无入口（见 [通道边界](skills/mcgs-mcp-editor/references/device-channels.md)） |
 
 登记类型共 **22 类**（类型身份 ≠ 可编辑能力）；`0x5026 CDrawFlow` 仅识别身份、拒绝所有显式编辑；`0x5030` 报表仍是候选、不登记；`0x5039` 只有等长文字入口。
 
@@ -97,21 +97,21 @@ MCGS Pro 的工程是 Access 数据库，窗口内容又是 MFC `CArchive` 序�
 ```powershell
 git clone https://github.com/Babel36acl/mcgs-mcp-editor-skill.git
 cd mcgs-mcp-editor-skill
-python -m pip install -r mcgs-mcp-editor/requirements.txt
+python -m pip install -r skills/mcgs-mcp-editor/requirements.txt
 
 # 1) 只读盘点：窗口 ID、记录索引、类型、payload 哈希、字符串线索
-python mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py inspect D:/Experiments/sample.MCP > D:/Experiments/inventory.json
 
 # 2) 按 inventory 写编辑清单（示例见 examples/，偏移必须自己取证）
-python mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP `
+python skills/mcgs-mcp-editor/scripts/mcp_tool.py patch D:/Experiments/sample.MCP `
   --profile D:/Experiments/edits.json --output D:/Experiments/edited.MCP
 
 # 3) 条件脚本：编译 → 静态检查 → 仿真（compile/simulate 需要原厂二进制）
-python mcgs-mcp-editor/scripts/script_tool.py compile --source examples/script/source.txt `
+python skills/mcgs-mcp-editor/scripts/script_tool.py compile --source examples/script/source.txt `
   --symbols examples/script/symbols.json `
   --editor "C:/McgsPro/Program/McgsSetPro.exe" --runtime "C:/McgsPro/Program/script.dll" `
   --output D:/Experiments/program.json
-python mcgs-mcp-editor/scripts/script_tool.py inspect --program D:/Experiments/program.json
+python skills/mcgs-mcp-editor/scripts/script_tool.py inspect --program D:/Experiments/program.json
 ```
 
 三条硬规则：
@@ -150,7 +150,7 @@ python -c "import pyodbc; print('\n'.join(pyodbc.drivers()))"
 
 ## 安装为 Agent 技能
 
-`mcgs-mcp-editor/` 是技能本体（`SKILL.md` + `references/` + `scripts/`）。按你的 Agent 选择安装位置：
+`skills/mcgs-mcp-editor/` 是技能本体（`SKILL.md` + `references/` + `scripts/`），仓库采用标准 `<容器>/<技能名>/SKILL.md` 布局，`npx skills add` 无需递归回退即可发现。按你的 Agent 选择安装位置：
 
 | Agent / 运行时 | 安装目录 |
 | --- | --- |
@@ -158,10 +158,10 @@ python -c "import pyodbc; print('\n'.join(pyodbc.drivers()))"
 | Claude Code | `~/.claude/skills/mcgs-mcp-editor/` |
 | 任意支持 Agent Skills 的 Agent | `npx skills add Babel36acl/mcgs-mcp-editor-skill --skill mcgs-mcp-editor`（会自动识别并链接到已安装的 Agent） |
 | 共享 skills 目录（DSH 等） | `~/.agents/skills/mcgs-mcp-editor/` |
-| 不使用技能机制 | 直接把 `scripts/` 当普通 Python 工具调用 |
+| 不使用技能机制 | 直接把 `skills/mcgs-mcp-editor/scripts/` 当普通 Python 工具调用 |
 
 ```powershell
-Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
+Copy-Item -Recurse skills/mcgs-mcp-editor "$HOME/.agents/skills/"
 ```
 
 技能会匹配 MCGS 文件编辑类任务。**仓库是唯一开发源**：先在仓库改 + 跑测试，再同步到安装目录，避免多处独立演进。
@@ -174,19 +174,20 @@ Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
 ├── CHANGELOG.md                  受证据约束的变更记录
 ├── CONTRIBUTING.md               贡献与去敏规则
 ├── LICENSE                       GPL-3.0-or-later（仅覆盖原创内容）
-├── mcgs-mcp-editor/              技能本体，整层复制即可安装
-│   ├── SKILL.md                  技能入口：任务→资料路由、红线
-│   ├── agents/openai.yaml        Codex 显示名与默认提示
-│   ├── requirements.txt          运行时依赖
-│   └── references/
-│       ├── capabilities.md       入口清单与"已验/未验"分级
-│       ├── format.md             Access + CArchive 记录格式、22 类注册表
-│       ├── usage.md              命令、编辑清单字段、退出码
-│       ├── acceptance.md         一次损坏版本的根因、逐阶段宿主验收记录
-│       ├── validation.md         证据分层、普查分母、与第三方实现对拍
-│       ├── variable-ids.md       变量 ObjData 布局与 ID/绑定线索
-│       └── device-channels.md    设备通道加载丢弃、占址与验证路径
-├── mcgs-mcp-editor/scripts/      纯 Python 工具（无厂商代码）
+├── skills/
+│   └── mcgs-mcp-editor/          技能本体，整层复制即可安装（标准布局）
+│       ├── SKILL.md              技能入口：任务→资料路由、红线
+│       ├── agents/openai.yaml    Codex 显示名与默认提示
+│       ├── requirements.txt      运行时依赖
+│       ├── scripts/              纯 Python 工具（无厂商代码）
+│       └── references/
+│           ├── capabilities.md   入口清单与"已验/未验"分级
+│           ├── format.md         Access + CArchive 记录格式、22 类注册表
+│           ├── usage.md          命令、编辑清单字段、退出码
+│           ├── acceptance.md     一次损坏版本的根因、逐阶段宿主验收记录
+│           ├── validation.md     证据分层、普查分母、与第三方实现对拍
+│           ├── variable-ids.md   变量 ObjData 布局与 ID/绑定线索
+│           └── device-channels.md 设备通道加载丢弃、占址与验证路径
 ├── tests/                        合成结构/字段测试 + 可选原厂机器码测试
 ├── examples/                     编辑清单、引用清单、脚本样例
 └── .github/workflows/ci.yml      Windows 上的多版本测试
@@ -230,7 +231,7 @@ Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
 | `input_range` | 仅 0x5025，顺序 `[最大值, 最小值]` | `expected`, `value` |
 | `event` | 仅 0x5027，源码与字节码一起替换 | 另加 `expected_code_sha256`, `program_file` |
 
-完整字段说明与偏移规则见 [命令与编辑清单](mcgs-mcp-editor/references/usage.md)，可复制骨架见 [examples/](examples/README.md)。**示例中的偏移与哈希必须替换为你自己工程的取证结果。**
+完整字段说明与偏移规则见 [命令与编辑清单](skills/mcgs-mcp-editor/references/usage.md)，可复制骨架见 [examples/](examples/README.md)。**示例中的偏移与哈希必须替换为你自己工程的取证结果。**
 
 ## 证据分级：什么叫"验证过"
 
@@ -244,14 +245,14 @@ Copy-Item -Recurse mcgs-mcp-editor "$HOME/.agents/skills/"
 | 测试/原厂仿真 | 合成结构测试、原厂机器码执行 | 真实 GUI、设备与现场 |
 | 宿主 | 打开、属性、Ctrl+E、离线输入/动作、保存关闭重开 | 真机联动验收 |
 
-历史宿主观测是**用户对列明步骤的确认**，不是本工具生成的 GUI 轨迹；换过文件后再引用旧验收，必须重新关联产物哈希。详见 [验收记录](mcgs-mcp-editor/references/acceptance.md) 与 [多方向验证](mcgs-mcp-editor/references/validation.md)。
+历史宿主观测是**用户对列明步骤的确认**，不是本工具生成的 GUI 轨迹；换过文件后再引用旧验收，必须重新关联产物哈希。详见 [验收记录](skills/mcgs-mcp-editor/references/acceptance.md) 与 [多方向验证](skills/mcgs-mcp-editor/references/validation.md)。
 
 ## 兼容性与版本锁定
 
 - **已验证宿主**：McgsPro **3.5.1.7267**。其他版本会出现不同的记录布局，当前不承诺。
-- **原厂二进制**：按 SHA-256 锁定 `McgsSetPro.exe` / `script.dll`；哈希不匹配直接拒绝，不能改哈希绕过（见 [format.md](mcgs-mcp-editor/references/format.md#原厂机器码仿真)）。
+- **原厂二进制**：按 SHA-256 锁定 `McgsSetPro.exe` / `script.dll`；哈希不匹配直接拒绝，不能改哈希绕过（见 [format.md](skills/mcgs-mcp-editor/references/format.md#原厂机器码仿真)）。
 - **解析范围**：顶层窗口记录可定界读取；嵌套 payload、资源引用、变量表与设备通道只覆盖已查证字段。扩展长度（payload ≥ 65535）与 `MCGS-ESET` 文档头明确拒绝。
-- **统计口径**：安装目录 18 份样例共 143 个窗口，当前解析器完整读取 136 个、拒绝 7 个，成功窗口合计 4099 条记录 / 21 类；拒绝窗口仍是未知证据，不能算作"零控件"。计数方法与陷阱见 [validation.md](mcgs-mcp-editor/references/validation.md#已知统计陷阱)。
+- **统计口径**：安装目录 18 份样例共 143 个窗口，当前解析器完整读取 136 个、拒绝 7 个，成功窗口合计 4099 条记录 / 21 类；拒绝窗口仍是未知证据，不能算作"零控件"。计数方法与陷阱见 [validation.md](skills/mcgs-mcp-editor/references/validation.md#已知统计陷阱)。
 
 ## 安全边界与发布范围
 
@@ -306,10 +307,10 @@ python -m unittest discover -s tests -p test_native_codegen.py -v
 需要与 Python 位数一致的 Microsoft Access ODBC 驱动（32 位 Python 配 32 位驱动），驱动名默认 `Microsoft Access Driver (*.mdb, *.accdb)`，可用 `--driver` 覆盖。
 
 **改了控件但宿主说"工程已损坏"？**
-先查是否漏更新变长字段的嵌套长度 —— 曾经的真实根因就是漏了三层 `u16`，复盘见 [acceptance.md](mcgs-mcp-editor/references/acceptance.md#一次损坏版本的根因)。
+先查是否漏更新变长字段的嵌套长度 —— 曾经的真实根因就是漏了三层 `u16`，复盘见 [acceptance.md](skills/mcgs-mcp-editor/references/acceptance.md#一次损坏版本的根因)。
 
 **为什么不能直接给我加个变量 / 加条设备通道？**
-变量分配与通道注册都还没建立通用规则；字节新增通道已被实测证明会在宿主加载时被静默丢弃并在保存后删除。需要新地址时走宿主原生"增加设备通道"，见 [通道边界](mcgs-mcp-editor/references/device-channels.md)。
+变量分配与通道注册都还没建立通用规则；字节新增通道已被实测证明会在宿主加载时被静默丢弃并在保存后删除。需要新地址时走宿主原生"增加设备通道"，见 [通道边界](skills/mcgs-mcp-editor/references/device-channels.md)。
 
 **`script_tool.py inspect` 需要装厂商软件吗？**
 不需要。它只解析 `program.json` 里的 `code_hex`，仅用标准库；`compile`/`simulate` 才需要原厂二进制。
@@ -323,11 +324,11 @@ MCGS、昆仑通态及相关产品名称为其权利人商标；厂商 EXE/DLL�
 
 | 想知道什么 | 读这个 |
 | --- | --- |
-| 现在能改什么、证据到哪一层 | [capabilities.md](mcgs-mcp-editor/references/capabilities.md) |
-| 文件格式、22 类注册表、字段偏移 | [format.md](mcgs-mcp-editor/references/format.md) |
-| 命令怎么用、清单怎么写、退出码 | [usage.md](mcgs-mcp-editor/references/usage.md) |
-| 历史上哪次改坏了、怎么修、宿主验收记录 | [acceptance.md](mcgs-mcp-editor/references/acceptance.md) |
-| 怎么做证据分层、普查分母、与第三方实现对拍 | [validation.md](mcgs-mcp-editor/references/validation.md) |
-| 变量 ObjData 布局、ID 与绑定线索 | [variable-ids.md](mcgs-mcp-editor/references/variable-ids.md) |
-| 设备通道为什么会被丢弃、新地址怎么办 | [device-channels.md](mcgs-mcp-editor/references/device-channels.md) |
-| 给 Agent 的执行红线 | [SKILL.md](mcgs-mcp-editor/SKILL.md) |
+| 现在能改什么、证据到哪一层 | [capabilities.md](skills/mcgs-mcp-editor/references/capabilities.md) |
+| 文件格式、22 类注册表、字段偏移 | [format.md](skills/mcgs-mcp-editor/references/format.md) |
+| 命令怎么用、清单怎么写、退出码 | [usage.md](skills/mcgs-mcp-editor/references/usage.md) |
+| 历史上哪次改坏了、怎么修、宿主验收记录 | [acceptance.md](skills/mcgs-mcp-editor/references/acceptance.md) |
+| 怎么做证据分层、普查分母、与第三方实现对拍 | [validation.md](skills/mcgs-mcp-editor/references/validation.md) |
+| 变量 ObjData 布局、ID 与绑定线索 | [variable-ids.md](skills/mcgs-mcp-editor/references/variable-ids.md) |
+| 设备通道为什么会被丢弃、新地址怎么办 | [device-channels.md](skills/mcgs-mcp-editor/references/device-channels.md) |
+| 给 Agent 的执行红线 | [SKILL.md](skills/mcgs-mcp-editor/SKILL.md) |
