@@ -276,6 +276,18 @@ Copy-Item -Recurse skills/mcgs-mcp-editor "$HOME/.agents/skills/"
 5. `script.dll`：`search_bytes` 定位 opcode handler 表，`analyze_function` 对照 `scripts/bytecode_inspect.py` 里的 `OPS` 表，扩指令集前先确认操作数编码。
 6. 需要运行时证据时，用 Frida/GDB/Rizin 在你自己的授权副本上做单字段对照（改一个属性、保存、比对完整 payload）。
 
+实测（2026-11，Windows + REA 的 Ghidra provider）：
+
+| 目标 | 打开 | 首次操作 | 之后的调用 |
+| --- | --- | --- | --- |
+| 166 KB `script.dll` | 0.3 s | 44.6 s（导入 + 自动分析一次性成本） | 18 ms–4 s，可反编译解释器 `switch`，用 case 地址反查所属函数 |
+| 34 MB `McgsSetPro.exe` | 0.5 s | 超过 MCP 客户端 60 s 请求预算 | 无法形成热缓存，需改用离线工程 |
+
+结论：**REA 适合小 DLL**（脚本解释器、驱动、绘图插件），主程序更适合"先离线分析成 Ghidra 工程，再用批量脚本反编译"。两个坑值得记：
+
+- 单次请求超时是客户端预算，不是分析失败；大二进制不要反复重试，直接走离线工程。
+- Ghidra 12.2 起不再内置 Jython，旧的 `.py` headless 脚本会报 PyGhidra 错误；改用 Java 脚本（自动编译）或配置 PyGhidra。打开旧版本工程会触发升级，先复制副本（实测副本升级 + 反编译两个函数约 13 s）。
+
 边界：REA 的输出属于**未验证材料**，结论要落回本仓库的[证据分级](#证据分级什么叫验证过)；厂商二进制、反编译清单、工程产物一律不进仓库（见 [CONTRIBUTING](CONTRIBUTING.md)）。
 
 ## 开发与测试
