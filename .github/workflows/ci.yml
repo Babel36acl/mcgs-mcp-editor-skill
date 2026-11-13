@@ -1,0 +1,40 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: [ '3.10', '3.12', '3.14' ]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - name: Install offline test dependencies
+        run: python -m pip install --upgrade pip; python -m pip install -r requirements-dev.txt
+      - name: Run synthetic tests
+        run: python -m unittest discover -s tests -v
+      - name: Smoke test CLI entry points
+        run: |
+          python mcgs-mcp-editor/scripts/mcp_tool.py --help
+          python mcgs-mcp-editor/scripts/script_tool.py --help
+          python mcgs-mcp-editor/scripts/script_tool.py inspect --help
+      - name: Reject vendor binaries and real projects in the tree
+        shell: pwsh
+        run: |
+          $tracked = git ls-files | Select-String -Pattern '\.(MCP|mcp|exe|dll|accdb|mdb|ldb)$' -CaseSensitive:$false
+          if ($tracked) {
+            $tracked | ForEach-Object { Write-Host "unexpected artifact: $_" }
+            throw 'vendor binary or real project artifact is tracked'
+          }

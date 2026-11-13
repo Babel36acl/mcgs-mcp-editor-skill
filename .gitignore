@@ -1,6 +1,7 @@
 __pycache__/
 *.py[cod]
 .venv/
+.pytest_cache/
 *.MCP
 *.mcp
 *.ldb
@@ -11,4 +12,7 @@ __pycache__/
 *.lib
 *.png
 *.jpg
+*.csv
 local-validation/
+*.bak
+*.bak-old/

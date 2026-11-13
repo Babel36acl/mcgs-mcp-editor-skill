@@ -1,0 +1,56 @@
+{
+  "_comment": "骨架：所有 REPLACE_ME 与偏移都必须来自你自己的 inspect 取证。详见 examples/README.md。",
+  "source_sha256": "REPLACE_ME_64_HEX_OF_INPUT_MCP_FILE",
+  "window_id": 1,
+  "controls": [
+    {
+      "_comment": "标签改字示例（0x5008）。offset 是 payload 内 UTF-16 字符串的起始偏移。",
+      "action": "replace",
+      "record_index": 3,
+      "kind": "0x5008",
+      "sha256": "REPLACE_ME_64_HEX_OF_ORIGINAL_PAYLOAD",
+      "edits": [
+        {
+          "type": "string",
+          "offset": 12,
+          "expected": "旧文字",
+          "value": "新文字（可长可短，工具会同步嵌套长度）"
+        }
+      ],
+      "nested_counts": []
+    },
+    {
+      "_comment": "输入框改绑示例（0x5025）：名称与绑定对象 ID 必须同步改，范围顺序为 [最大值, 最小值]。",
+      "action": "replace",
+      "record_index": 4,
+      "kind": "0x5025",
+      "sha256": "REPLACE_ME_64_HEX_OF_ORIGINAL_PAYLOAD",
+      "edits": [
+        {
+          "type": "input_binding",
+          "offset": 40,
+          "expected": "旧变量",
+          "value": "新变量",
+          "id_offset": 32,
+          "expected_id": 1,
+          "value_id": 2
+        },
+        {
+          "type": "input_range",
+          "offset": 52,
+          "expected": [100.0, 0.0],
+          "value": [200.0, 10.0]
+        }
+      ],
+      "nested_counts": []
+    }
+  ],
+  "new_windows": [
+    {
+      "_comment": "复制模板窗口：窗口名必须唯一；内部控件名重复由宿主验收覆盖。",
+      "template_window_id": 1,
+      "new_name": "REPLACE_ME_UNIQUE_WINDOW_NAME",
+      "note": "optional note"
+    }
+  ]
+}

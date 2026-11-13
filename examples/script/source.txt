@@ -1,0 +1,5 @@
+If Result = 100 Then
+  Result = 200
+Else
+  Result = 100
+EndIf

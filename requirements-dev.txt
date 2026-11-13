@@ -1,0 +1,5 @@
+# Offline test dependencies only. Excludes pyodbc: no synthetic test opens an
+# Access write path, and building it on CI adds a native toolchain dependency.
+access-parser==0.0.6
+pefile==2024.8.26
+unicorn==2.1.4

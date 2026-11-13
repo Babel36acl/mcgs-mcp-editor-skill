@@ -1,0 +1,15 @@
+{
+  "_comment": "只读导航字段检查。source_sha256 必须精确等于被检查的 MCP 文件；链接字段位置必须来自取证，不是自动识别。",
+  "source_sha256": "REPLACE_ME_64_HEX_OF_INPUT_MCP_FILE",
+  "links": [
+    {
+      "type": "window_navigation",
+      "window_id": 1,
+      "record_index": 7,
+      "kind": "0x5027",
+      "sha256": "REPLACE_ME_64_HEX_OF_SOURCE_CONTROL_PAYLOAD",
+      "name_offset": 120,
+      "id_offset": 136
+    }
+  ]
+}
